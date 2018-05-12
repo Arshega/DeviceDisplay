@@ -1,11 +1,16 @@
 package com.example.pc.devicedisplay
 
+import android.app.ActivityManager
 import android.location.Location
 import android.support.v7.app.AppCompatActivity
 
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.provider.SyncStateContract
 import android.util.Log;
+import android.widget.Toast
+import com.example.pc.devicedisplay.R.string.firebase_path
+import com.example.pc.devicedisplay.R.string.transport_id
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -19,25 +24,48 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.*
 import java.util.*
+import kotlin.collections.HashMap
+import com.google.firebase.database.DataSnapshot
 
-class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
+
+
+class DisplayActivity: AppCompatActivity(), OnMapReadyCallback {
 
     private val TAG = DisplayActivity::class.java.simpleName
     private val mMarkers = HashMap<String, Marker>()
     private lateinit var mMap: GoogleMap
+    private lateinit var userList: MutableList<User>
+    private  var latitude: String = ""
+    private  var longitude: String =""
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_display)
+        userList = mutableListOf()
         val mapFragment = supportFragmentManager
                 .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        var ref: DatabaseReference = FirebaseDatabase.getInstance().getReference("locations")
+        var latitudeRef = ref.child("Vince")
+        var cal: ActivityManager
+
+        latitudeRef.addValueEventListener(object : ValueEventListener {
+            override fun onCancelled(p0: DatabaseError?) {
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+
+            override fun onDataChange(p0: DataSnapshot?) {
+                latitude = p0?.child("latitude")?.value.toString()
+                longitude = p0?.child("longitude")?.value.toString()
+                userList.add(User(latitude.toDouble(), longitude.toDouble()))
+
+            }
+
+        })
 
     }
 
@@ -48,7 +76,6 @@ class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun loginToFirebase() {
-
         val email = getString(R.string.firebase_email)
         val password = getString(R.string.firebase_password)
         FirebaseAuth.getInstance().signInWithEmailAndPassword(
@@ -63,8 +90,8 @@ class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun subscribeToUpdates() {
-        var ref: DatabaseReference = FirebaseDatabase.getInstance().getReference(getString(R.string.firebase_path))
-        ref.addChildEventListener(object : ChildEventListener{
+        var ref: DatabaseReference = FirebaseDatabase.getInstance().getReference("locations")
+        ref.addChildEventListener(object : ChildEventListener {
             override fun onCancelled(p0: DatabaseError?) {
                 TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
             }
@@ -78,6 +105,7 @@ class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
             }
 
             override fun onChildAdded(p0: DataSnapshot?, p1: String?) {
+
                 setMarker(p0)
             }
 
@@ -89,11 +117,10 @@ class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setMarker(dataSnapshot: DataSnapshot?){
+
         val key: String = dataSnapshot!!.key
         val value: HashMap<*, *> = dataSnapshot.getValue() as HashMap<*, *>
-        val lat: Double = (value.get("latitude").toString()).toDouble()
-        val lng: Double = (value.get("longitude").toString()).toDouble()
-        val location = LatLng(lat,lng)
+        val location = LatLng(userList.get(0).lat, userList.get(0).long)
         if (!mMarkers.containsKey(key)) {
             mMarkers.put(key, mMap.addMarker(MarkerOptions().title(key).position(location)))
         } else {
@@ -104,7 +131,10 @@ class DisplayActivity : AppCompatActivity(), OnMapReadyCallback {
             builder.include(marker.getPosition())
         }
         mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 300))
+
     }
+
+
 
 
 }
