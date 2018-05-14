@@ -49,8 +49,8 @@ class DisplayActivity: AppCompatActivity(), OnMapReadyCallback {
                 .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        var ref: DatabaseReference = FirebaseDatabase.getInstance().getReference("locations")
-        var latitudeRef = ref.child("Vince")
+        var ref: DatabaseReference = FirebaseDatabase.getInstance().getReference("User")
+        var latitudeRef = ref.child("user1").child("0")
         var cal: ActivityManager
 
         latitudeRef.addValueEventListener(object : ValueEventListener {
